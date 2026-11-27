@@ -1,0 +1,157 @@
+import pandas as pd
+import numpy as np 
+import matplotlib.pyplot as plt 
+import seaborn as sns 
+import statsmodels.api as sm 
+
+plt.style.use("ggplot")
+
+df = pd.read_csv( )
+
+df.head()
+
+df.info()
+
+df["Date"] = pd.to_datetime(df["Date"])
+
+df = df.sort_values("Date")
+
+df = df.set_index("Date")
+
+df.info()
+
+df["Daily Return"] = df["Adj Close"].pct_change()
+
+df[["Adj Close", "Daily Return"]].head(10)
+
+plt.figure(figsize=(14,6))
+
+plt.plot(df.index, df["Daily Return"])
+
+plt.title("TTWO Daily Stock Returns")
+
+plt.title("TTWO Daily Stock Returns")
+plt.xlabel("Date")
+plt.ylabel("Daily Return")
+
+plt.axhline(y=0, color="black", linestyle="--")
+
+plt.grid(True)
+plt.show()
+
+from statsmodels.graphics.tsaplots import plot_acf
+
+returns = df['Daily Return'].dropna()
+
+plt.figure(figsize=(12,5))
+
+plot_acf(returns, lags=40)
+
+plt.title('TTWO Daily Returns - Autocorrelation Function')
+plt.show()
+
+##Test for autocorrelation (ACF)
+
+from statsmodels.graphics.tsaplots import plot_acf
+
+returns = df['Daily Return'].dropna()
+
+plt.figure(figsize=(12,5))
+
+plot_acf(returns, lags=40)
+
+plt.title('TTWO Daily Returns - Autocorrelation Function')
+plt.show()
+
+
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+squared_returns = returns ** 2
+
+returns = df["Daily Return"].dropna()
+
+ljung_box_squared = acorr_ljungbox(
+    squared_returns,
+    lags=[10, 20, 30],
+    return_df=True
+)
+
+print(ljung_box_squared)
+
+
+from statsmodels.stats.diagnostic import het_arch 
+
+arch_test = het_arch(returns, nlags=10)
+
+print("ARCH LM Statistic:", arch_test[0])
+print("ARCH LM P-value:", arch_test[1])
+
+plt.figure(figsize=(14, 6))
+
+plt.plot(
+    df.index,
+    df["Daily Return"].abs()
+)
+
+plt.title("TTWO Absolute Daily Returns")
+plt.xlabel("Date")
+plt.ylabel("Absolute Daily Return")
+
+plt.grid(True)
+plt.show()
+
+##GARCH
+
+from arch import arch_model
+
+garch_model = arch_model(
+    returns.dropna() * 100,
+    mean="Constant",
+    vol="GARCH",
+    p=1,
+    q=1,
+    dist="normal"
+)
+
+garch_results = garch_model.fit()
+
+print(garch_results.summary())
+
+#Check whether our GARCH model is adequate
+# Standardized residuals
+standardized_residuals = garch_results.std_resid.dropna()
+
+# ACF of standardized residuals
+from statsmodels.graphics.tsaplots import plot_acf
+
+plot_acf(standardized_residuals, lags=30)
+
+plt.title("GARCH Standardized Residuals - ACF")
+plt.show()
+
+#squared standardized residuals:
+
+squared_standardized = standardized_residuals **2
+
+plot_acf(squared_standardized, lags = 30)
+
+plt.title("Squared GARCH Standardized Residuals - ACF")
+plt.show()
+
+#Ljung-Box test
+
+from statsmodels.stats.diagnostic import acorr_ljungbox
+
+print("Standardized residuals:")
+print(acorr_ljungbox(
+    standardized_residuals,
+    lags=[10,20],
+    return_df=True
+))
+
+print("\nSquared standardized residuals")
+print(acorr_ljungbox(
+    squared_standardized, 
+    lags=[10,20],
+    return_df=True
+))
